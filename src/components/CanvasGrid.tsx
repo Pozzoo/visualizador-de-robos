@@ -1,33 +1,19 @@
 import {useEffect, useRef} from "react";
 
-//TODO: MOVE THIS TO A TYPES FILE
-//START
-type TileType = 1 | 2 | 3 | 4 | 5;
-interface Tile {
-    X: number;
-    Y: number;
-    Objeto: TileType;
-    valor: number;
-}
+import robot1 from '../assets/sprites/robo-1.png';
+import robot2 from '../assets/sprites/robo-2.png';
+import robot3 from '../assets/sprites/robo-3.png';
+import robot4 from '../assets/sprites/robo-4.png';
+import robot5 from '../assets/sprites/robo-5.png';
 
-interface Robot {
-    id: string;
-    x: number;
-    y: number;
-}
-
-interface SpriteString {
-    type: TileType;
-    src: string;
-    robotID?: number;
-}
-
-interface Sprite {
-    type: TileType;
-    img: HTMLImageElement;
-    robotID?: number;
-}
-//END
+import shelfSprite from '../assets/sprites/estante.png';
+import shelfFlippedSprite from '../assets/sprites/estante-virada.png';
+import floorTile from '../assets/sprites/floor-tile.png';
+import wallTile from '../assets/sprites/wall-tile.png';
+import xSprite from '../assets/sprites/floor-X-tile.png';
+import {loadImage} from "../utils/ImageUtils.ts";
+import type {Robot, SpritesObject, Tile} from "../Interfaces.ts";
+import type {TileType} from "../Types.ts";
 
 interface Props {
     width: number;
@@ -39,14 +25,40 @@ interface Props {
 
 const CanvasGrid = ({ width, height, tileSize, tiles, robots }: Props) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const spriteRef = useRef<Sprite[]>([]);
+    const spriteRef = useRef<SpritesObject | null>(null);
 
-    const drawRobots = (ctx: CanvasRenderingContext2D) => {
-        const sprites = spriteRef.current;
-        if (sprites) {
-            robots.forEach((robot, index) => {
-                ctx.drawImage(sprites, robot.x * tileSize, robot.y * tileSize, tileSize, tileSize);
-            });
+    const getSprite = (sprites: SpritesObject, type: TileType, robotID?: number, flipped?: boolean) => {
+        switch (type) {
+            case 1:
+                return sprites.floor;
+            case 2:
+                return getRobotSprite(sprites, robotID!); //TODO: MAYBE MAKE THIS BETTER
+            case 3:
+                if (flipped) return sprites.shelfFlipped;
+                return sprites.shelf;
+            case 4:
+                return sprites.wall;
+            case 5:
+                return sprites.delivery;
+            default:
+                return sprites.floor;
+        }
+    }
+    
+    const getRobotSprite = (sprites: SpritesObject, robotID: number) => {
+        switch (robotID) {
+            case 0:
+                return sprites.robot1
+            case 1:
+                return sprites.robot2
+            case 2:
+                return sprites.robot3
+            case 3:
+                return sprites.robot4
+            case 4:
+                return sprites.robot5
+            default:
+                return sprites.floor
         }
     }
     
@@ -60,56 +72,57 @@ const CanvasGrid = ({ width, height, tileSize, tiles, robots }: Props) => {
         // Clear
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        if (!spriteRef.current) return;
+        const sprites = spriteRef.current;
+
         // Draw grid
         tiles.forEach(tile => {
-            let isRobot = false;
+            if (tile.valor != 0) {
+                // Draw floors
+                ctx.drawImage(getSprite(sprites, 1), tile.X * tileSize, tile.Y * tileSize, tileSize, tileSize);
 
-            switch (tile.Objeto) {
-                case 1:
-                    ctx.fillStyle = "#f0f0f0";
-                    break;
-                case 2:
-                    isRobot = true;
-                    break;
-                case 3:
-                    ctx.fillStyle = "#444";
-                    break;
-                case 4:
-                    ctx.fillStyle = "#211";
-                    break;
-                case 5:
-                    ctx.fillStyle = "#4caf50";
-                    break;
-            }
-
-            //TODO: REMOVE THIS
-            if (!isRobot) {
-                ctx.fillRect(tile.X * tileSize, tile.Y * tileSize, tileSize, tileSize);
-                ctx.strokeStyle = "#ccc";
-                ctx.strokeRect(tile.X * tileSize, tile.Y * tileSize, tileSize, tileSize);
-                ctx.stroke();
-
-                // Draw shelf IDs
-                if (tile.valor != 0) {
-                    ctx.fillStyle = "#fff";
-                    ctx.fillText(tile.valor.toString(), tile.X * tileSize + 10, tile.Y * tileSize + 10);
-                }
+            } else {
+                ctx.drawImage(getSprite(sprites, tile.Objeto), tile.X * tileSize, tile.Y * tileSize, tileSize, tileSize);
             }
 
         });
 
-    }, [tiles, robots, tileSize, spriteRef]);
+        robots.forEach(robot => {
+            ctx.drawImage(getSprite(sprites, robot.Objeto, parseInt(robot.Id.charAt(1))), robot.X * tileSize, robot.Y * tileSize, tileSize, tileSize);
+        })
+
+        tiles.forEach(tile => {
+            if (tile.valor != 0) {
+                if (tile.valor > 10 && (Math.floor((tile.valor - 1) / 10) % 2 != 0)) {
+                    // Draw shelves looking left
+                    ctx.drawImage(getSprite(sprites, tile.Objeto, undefined, true), tile.X * tileSize, tile.Y * tileSize, tileSize, tileSize);
+                } else {
+                    // Draw shelves looking right
+                    ctx.drawImage(getSprite(sprites, tile.Objeto), tile.X * tileSize, tile.Y * tileSize, tileSize, tileSize);
+                }
+
+                // Draw shelf IDs
+                ctx.fillStyle = "#000";
+                ctx.fillText(tile.valor.toString(), tile.X * tileSize + 15, tile.Y * tileSize + 20);
+            }
+        })
+
+    }, [tiles, robots, tileSize, spriteRef, getSprite]);
 
     useEffect(() => {
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext("2d");
-
-        if (!canvas || !ctx) return;
-
-        canvas.dispatchEvent(new Event("update"));
-        drawRobots(ctx);
-
-    }, [drawRobots, robots, spriteRef]);
+        spriteRef.current = {
+            robot1: loadImage(robot1),
+            robot2: loadImage(robot2),
+            robot3: loadImage(robot3),
+            robot4: loadImage(robot4),
+            robot5: loadImage(robot5),
+            shelf: loadImage(shelfSprite),
+            shelfFlipped: loadImage(shelfFlippedSprite),
+            floor: loadImage(floorTile),
+            wall: loadImage(wallTile),
+            delivery: loadImage(xSprite),
+        };
+    }, []);
 
     return <canvas ref={canvasRef} width={width} height={height} />;
 }
