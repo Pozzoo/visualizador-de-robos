@@ -22,6 +22,10 @@ export interface Sprite {
 export interface SpritesObject {
     shelf: HTMLImageElement;
     shelfFlipped: HTMLImageElement;
+    shelfSelected: HTMLImageElement;
+    shelfSelectedFlipped: HTMLImageElement;
+    shelfTargeted: HTMLImageElement;
+    shelfTargetedFlipped: HTMLImageElement;
     floor: HTMLImageElement;
     wall: HTMLImageElement;
     delivery: HTMLImageElement;

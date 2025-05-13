@@ -9,6 +9,11 @@ function App() {
 
     const [tiles, setTiles] = useState<Tile[]>([]);
     const [robots, setRobots] = useState<Robot[]>([]);
+    const [selectedIndexes, setSelectedIndexes] = useState<number[]>([]);
+
+    const updateIndexArray = (array: number[]) => {
+        setSelectedIndexes(array);
+    }
 
     useEffect(() => {
         axios.get("/start").then(r => {
@@ -20,17 +25,11 @@ function App() {
         });
     }, []);
 
-    useEffect(() => {
-        axios.get("/busca/0/1/largura").then(r => {
-            console.log(r.data);
-        })
-    }, [])
-
     return (
         <div className="app-wrapper">
-            <InputContainer />
+            <InputContainer updateIndexArray={updateIndexArray} />
 
-            <CanvasGrid width={1090} height={910} tileSize={70} tiles={tiles} robots={robots} />
+            <CanvasGrid width={1090} height={910} tileSize={70} tiles={tiles} robots={robots} selectedIndexes={selectedIndexes} />
         </div>
     )
 }
