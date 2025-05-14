@@ -1,4 +1,4 @@
-import {useEffect, useRef} from "react";
+import {type RefObject, useEffect, useRef} from "react";
 
 import robot1 from '../assets/sprites/robo-1.png';
 import robot2 from '../assets/sprites/robo-2.png';
@@ -16,7 +16,7 @@ import floorTile from '../assets/sprites/floor-tile.png';
 import wallTile from '../assets/sprites/wall-tile.png';
 import xSprite from '../assets/sprites/floor-X-tile.png';
 import {loadImage} from "../utils/ImageUtils.ts";
-import type {Robot, SpritesObject, Tile} from "../Interfaces.ts";
+import type {Glue, Robot, SpritesObject, Tile} from "../Interfaces.ts";
 import type {TileType} from "../Types.ts";
 
 interface Props {
@@ -26,19 +26,26 @@ interface Props {
     tiles: Tile[];
     robots: Robot[];
     selectedIndexes: number[];
+    targetIndex: number;
+    renderRef: RefObject<() => void>;
+    glue: Glue;
 }
 
-const CanvasGrid = ({ width, height, tileSize, tiles, robots, selectedIndexes }: Props) => {
+const CanvasGrid = ({ width, height, tileSize, tiles, robots, selectedIndexes, targetIndex, renderRef, glue }: Props) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const spriteRef = useRef<SpritesObject | null>(null);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     const getSprite = (sprites: SpritesObject, type: TileType, robotID?: number, flipped?: boolean, selected?: boolean, targeted?: boolean) => {
+
+        if (robotID === parseInt(glue.linkedRobot.charAt(1))) {
+            return getShelfSprite(sprites, false, false, true);
+        }
+
         switch (type) {
             case 1:
                 return sprites.floor;
             case 2:
-                return getRobotSprite(sprites, robotID!); //TODO: MAYBE MAKE THIS BETTER
+                return getRobotSprite(sprites, robotID!);
             case 3:
                 return getShelfSprite(sprites, flipped, selected, targeted);
             case 4:
@@ -91,12 +98,10 @@ const CanvasGrid = ({ width, height, tileSize, tiles, robots, selectedIndexes }:
         }
     }
     
-    useEffect(() => {
+    const render = () => {
         const canvas = canvasRef.current;
         const ctx = canvas?.getContext("2d");
         if (!canvas || !ctx) return;
-
-        ctx.imageSmoothingEnabled = false;
 
         // Clear
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -106,10 +111,9 @@ const CanvasGrid = ({ width, height, tileSize, tiles, robots, selectedIndexes }:
 
         // Draw grid
         tiles.forEach(tile => {
-            if (tile.valor != 0) {
+            if (parseInt(tile.valor) != 0) {
                 // Draw floors
                 ctx.drawImage(getSprite(sprites, 1), tile.Y * tileSize, tile.X * tileSize, tileSize, tileSize);
-
             } else {
                 ctx.drawImage(getSprite(sprites, tile.Objeto), tile.Y * tileSize, tile.X * tileSize, tileSize, tileSize);
             }
@@ -117,21 +121,33 @@ const CanvasGrid = ({ width, height, tileSize, tiles, robots, selectedIndexes }:
         });
 
         robots.forEach(robot => {
-            ctx.drawImage(getSprite(sprites, robot.Objeto, parseInt(robot.Id.charAt(1))), robot.X * tileSize, robot.Y * tileSize, tileSize, tileSize);
+            ctx.drawImage(getSprite(sprites, robot.Objeto, parseInt(robot.Id.charAt(1))), robot.Y * tileSize, robot.X * tileSize, tileSize, tileSize);
+
+            if (robot.Id === glue.linkedRobot) {
+                ctx.fillStyle = "#000";
+                ctx.fillText(glue.linkedShelf.toString(), robot.Y * tileSize + 15, robot.X * tileSize + 20);
+            }
         });
 
         tiles.forEach(tile => {
-            if (tile.valor != 0) {
-                if (tile.valor > 10 && (Math.floor((tile.valor - 1) / 10) % 2 != 0)) {
+            const tileID = parseInt(tile.valor)
+
+            if (tileID != 0 && tileID !== glue.linkedShelf) {
+                if (tileID > 10 && (Math.floor((tileID - 1) / 10) % 2 != 0)) {
                     // Draw shelves looking left
-                    if (selectedIndexes.includes(Number(tile.valor))) {
+                    if (targetIndex === tileID) {
+                        ctx.drawImage(getSprite(sprites, tile.Objeto, undefined, true, false, true), tile.Y * tileSize, tile.X * tileSize, tileSize, tileSize);
+                    } else if (selectedIndexes.includes(tileID)) {
                         ctx.drawImage(getSprite(sprites, tile.Objeto, undefined, true, true), tile.Y * tileSize, tile.X * tileSize, tileSize, tileSize);
                     } else {
                         ctx.drawImage(getSprite(sprites, tile.Objeto, undefined, true), tile.Y * tileSize, tile.X * tileSize, tileSize, tileSize);
                     }
+
                 } else {
                     // Draw shelves looking right
-                    if (selectedIndexes.includes(Number(tile.valor))) {
+                    if (targetIndex === tileID) {
+                        ctx.drawImage(getSprite(sprites, tile.Objeto, undefined, false, false, true), tile.Y * tileSize, tile.X * tileSize, tileSize, tileSize);
+                    } else if (selectedIndexes.includes(tileID)) {
                         ctx.drawImage(getSprite(sprites, tile.Objeto, undefined, false, true), tile.Y * tileSize, tile.X * tileSize, tileSize, tileSize);
                     } else {
                         ctx.drawImage(getSprite(sprites, tile.Objeto), tile.Y * tileSize, tile.X * tileSize, tileSize, tileSize);
@@ -143,8 +159,13 @@ const CanvasGrid = ({ width, height, tileSize, tiles, robots, selectedIndexes }:
                 ctx.fillText(tile.valor.toString(), tile.Y * tileSize + 15, tile.X * tileSize + 20);
             }
         });
+    }
 
-    }, [tiles, robots, tileSize, spriteRef, getSprite, selectedIndexes]);
+    useEffect(() => {
+        render();
+        renderRef.current = render;
+
+    }, [robots, tiles, selectedIndexes]);
 
     useEffect(() => {
         spriteRef.current = {

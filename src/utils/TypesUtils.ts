@@ -8,6 +8,7 @@ export const getAlgorithmByID = (id: number) => {
             return 'aprofundamento';
         case 3:
             return 'aestrela';
-
+        default:
+            return '';
     }
 }

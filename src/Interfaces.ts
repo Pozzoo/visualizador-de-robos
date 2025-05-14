@@ -4,7 +4,7 @@ export interface Tile {
     X: number;
     Y: number;
     Objeto: TileType;
-    valor: number;
+    valor: string;
 }
 
 export interface Robot {
@@ -14,9 +14,14 @@ export interface Robot {
     Objeto: TileType;
 }
 
-export interface Sprite {
-    img: HTMLImageElement;
-    robotID?: number;
+export interface rotaJson {
+    x: number;
+    y: number;
+}
+
+export interface Glue {
+    linkedRobot: string;
+    linkedShelf: number;
 }
 
 export interface SpritesObject {
